@@ -49,7 +49,6 @@ build/Release
 
 # IDE files
 .idea
-.vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
@@ -61,9 +60,6 @@ build/Release
 *.sw?
 
 # Environment variables
-.env
-.env.test
-.env.production
 .env*.local
 
 # Mac files
@@ -76,3 +72,7 @@ yarn-error.log
 
 # NestJS
 dist
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+config.bat
