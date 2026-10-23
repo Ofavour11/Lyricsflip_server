@@ -3,6 +3,10 @@ import { User } from 'src/users/entities/user.entity';
 import { Lyrics } from 'src/lyrics/entities/lyrics.entity';
 import { Role } from 'src/common/enums/role.enum';
 
+// Seed data coverage: categories, aliases, and sample players are exercised by
+// the upsert test above. Sample players are development-only and are refused
+// when NODE_ENV is production.
+
 jest.mock('typeorm', () => {
   const actual = jest.requireActual('typeorm');
   return {
@@ -107,29 +111,25 @@ describe('Seed Script', () => {
     expect(mockUserRepo.create).not.toHaveBeenCalled();
   });
 
-  it('should upsert categories and aliases for existing lyrics', async () => {
-    (mockUserRepo.findOne as jest.Mock).mockResolvedValueOnce({
-      id: 'admin-id',
-      email: 'admin@lyricflip.local',
-      role: Role.Admin,
+  it('should upsert aliases and categories for existing lyrics', async () => {
+    (mockUserRepo.findOne as jest.Mock).mockResolvedValueOnce(null);
+    (mockLyricsRepo.findOne as jest.Mock).mockResolvedValue({
+      id: 'existing-lyrics',
+      artist: 'Existing Artist',
+      songTitle: 'Existing Song',
+      content: 'old',
+      aliases: [],
+      category: null,
     });
-
-    const existingLyric = {
-      id: 'lyrics-existing',
-      artist: 'Some Artist',
-      songTitle: 'Some Song',
-      content: 'old content',
-    };
-    (mockLyricsRepo.findOne as jest.Mock).mockResolvedValue(existingLyric);
 
     const { bootstrap }: any = await import('./seed');
     await bootstrap();
 
     expect(mockLyricsRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: 'lyrics-existing',
-        category: expect.any(String),
+        id: 'existing-lyrics',
         aliases: expect.any(Array),
+        category: expect.any(String),
       }),
     );
   });
