@@ -1,0 +1,27 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "fix/issue-372-r2-117-load-test-baseline-for-gameplay-and",
+    "fix/issue-373-r2-118-seed-data-categories-aliases-and-sample",
+    "fix/issue-374-r2-119-rate-limit-and-size-limit-websocket",
+    "fix/issue-375-r2-120-set-request-body-limits-and-server",
+    "main",
+    "origin"
+  ],
+  "parent": {
+    "fix/issue-372-r2-117-load-test-baseline-for-gameplay-and": "main",
+    "fix/issue-373-r2-118-seed-data-categories-aliases-and-sample": "main",
+    "fix/issue-374-r2-119-rate-limit-and-size-limit-websocket": "main",
+    "fix/issue-375-r2-120-set-request-body-limits-and-server": "main",
+    "main": null,
+    "origin": "main"
+  },
+  "order": [
+    "main",
+    "fix/issue-372-r2-117-load-test-baseline-for-gameplay-and",
+    "fix/issue-373-r2-118-seed-data-categories-aliases-and-sample",
+    "fix/issue-374-r2-119-rate-limit-and-size-limit-websocket",
+    "fix/issue-375-r2-120-set-request-body-limits-and-server",
+    "origin"
+  ]
+}
