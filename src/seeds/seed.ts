@@ -7,8 +7,11 @@
  * Connects via a slim TypeORM DataSource (no full NestJS app boot, no
  * Stellar config, no cache layer).
  *
- * Idempotent: keyed on the (artist, songTitle) unique constraint — safe to
- * run multiple times on the same database.
+ * Idempotent: lyrics are keyed on the (artist, songTitle) unique constraint.
+ * Re-running updates genre, decade, difficulty, aliases and categories on
+ * existing rows so older databases pick up new metadata.
+ *
+ * Sample players are development-only and are refused in production.
  */
 
 import 'reflect-metadata';
@@ -37,7 +40,42 @@ const seedData: Array<{
   difficulty: number;
   content: string;
   lyricSnippet: string;
+  category?: string;
+  aliases?: string[];
 }> = require('./seed-data.json');
+
+// ---------------------------------------------------------------------------
+// Sample players (development only)
+// ---------------------------------------------------------------------------
+const SAMPLE_PLAYERS: Array<{
+  email: string;
+  username: string;
+  name: string;
+  password: string;
+  testnetAddress: string;
+}> = [
+  {
+    email: 'player1@lyricflip.local',
+    username: 'player1',
+    name: 'Sample Player One',
+    password: 'player1_local_dev',
+    testnetAddress: 'GTESTNETPLACEHOLDERPLAYER1000000000000000000000000000000001',
+  },
+  {
+    email: 'player2@lyricflip.local',
+    username: 'player2',
+    name: 'Sample Player Two',
+    password: 'player2_local_dev',
+    testnetAddress: 'GTESTNETPLACEHOLDERPLAYER2000000000000000000000000000000002',
+  },
+  {
+    email: 'player3@lyricflip.local',
+    username: 'player3',
+    name: 'Sample Player Three',
+    password: 'player3_local_dev',
+    testnetAddress: 'GTESTNETPLACEHOLDERPLAYER3000000000000000000000000000000003',
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Guard: refuse to run in production without explicit credentials
@@ -140,18 +178,25 @@ export async function bootstrap() {
   }
 
   // ------------------------------------------------------------------
-  // 2. Upsert lyrics — keyed on (artist, songTitle) unique constraint
+  // 2. Upsert lyrics — keyed on (artist, songTitle) unique constraint.
+  //    Existing rows get genre/decade/difficulty/category/aliases refreshed.
   // ------------------------------------------------------------------
   let created = 0;
-  let skipped = 0;
+  let updated = 0;
 
   for (const entry of seedData) {
-    const exists = await lyricsRepo.findOne({
+    const existing = await lyricsRepo.findOne({
       where: { artist: entry.artist, songTitle: entry.songTitle },
     });
 
-    if (exists) {
-      skipped++;
+    if (existing) {
+      existing.genre = toGenre(entry.genre);
+      existing.decade = entry.decade;
+      existing.difficulty = entry.difficulty;
+      existing.category = entry.category ?? existing.category ?? null;
+      existing.aliases = entry.aliases ?? [];
+      await lyricsRepo.save(existing);
+      updated++;
       continue;
     }
 
@@ -164,6 +209,8 @@ export async function bootstrap() {
         genre: toGenre(entry.genre),
         decade: entry.decade,
         difficulty: entry.difficulty,
+        category: entry.category ?? null,
+        aliases: entry.aliases ?? [],
         createdBy: { id: admin.id },
       }),
     );
@@ -171,9 +218,46 @@ export async function bootstrap() {
   }
 
   console.log(
-    `Lyrics: ${created} created, ${skipped} already present (${seedData.length} total).`,
+    `Lyrics: ${created} created, ${updated} updated (${seedData.length} total).`,
   );
+
+  // ------------------------------------------------------------------
+  // 3. Sample players — development only
+  // ------------------------------------------------------------------
+  const isProduction = process.env.NODE_ENV === 'production';
+  const samplePlayerLines: string[] = [];
+
+  if (isProduction) {
+    console.log('Skipping sample players: NODE_ENV=production.');
+  } else {
+    for (const sample of SAMPLE_PLAYERS) {
+      let player = await userRepo.findOne({ where: { email: sample.email } });
+      if (!player) {
+        player = userRepo.create({
+          email: sample.email,
+          username: sample.username,
+          name: sample.name,
+          passwordHash: await bcrypt.hash(sample.password, 12),
+          role: Role.User,
+          walletAddress: sample.testnetAddress,
+        });
+        player = await userRepo.save(player);
+        console.log(`Created sample player: ${sample.email}`);
+      } else {
+        console.log(`Sample player already exists: ${sample.email}`);
+      }
+      samplePlayerLines.push(
+        `  ${sample.email}  password=${sample.password}  wallet=${sample.testnetAddress}`,
+      );
+    }
+  }
+
   console.log('Seeding complete.');
+
+  if (samplePlayerLines.length > 0) {
+    console.log('\nSample players (development only):');
+    console.log(samplePlayerLines.join('\n'));
+  }
 
   await dataSource.destroy();
 }

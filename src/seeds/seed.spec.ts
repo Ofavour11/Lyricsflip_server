@@ -106,4 +106,31 @@ describe('Seed Script', () => {
 
     expect(mockUserRepo.create).not.toHaveBeenCalled();
   });
+
+  it('should upsert categories and aliases for existing lyrics', async () => {
+    (mockUserRepo.findOne as jest.Mock).mockResolvedValueOnce({
+      id: 'admin-id',
+      email: 'admin@lyricflip.local',
+      role: Role.Admin,
+    });
+
+    const existingLyric = {
+      id: 'lyrics-existing',
+      artist: 'Some Artist',
+      songTitle: 'Some Song',
+      content: 'old content',
+    };
+    (mockLyricsRepo.findOne as jest.Mock).mockResolvedValue(existingLyric);
+
+    const { bootstrap }: any = await import('./seed');
+    await bootstrap();
+
+    expect(mockLyricsRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'lyrics-existing',
+        category: expect.any(String),
+        aliases: expect.any(Array),
+      }),
+    );
+  });
 });
